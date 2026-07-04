@@ -5,8 +5,10 @@ import { initAuth, showAuthScreen } from './auth-ui.js';
 import { createQueue } from './queue.js';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
+  summarizeToday, filterExercises, hasExercise,
 } from './store.js';
 import { renderChart } from './chart.js';
+import { feedbackAdd } from './feedback.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -20,6 +22,10 @@ let selectedExercise = null;
 let offline = false;
 let currentDate = todayStr();
 let eventsBound = false;
+let currentTab = 'today';
+let justAddedId = null;
+let editingRecord = null;
+let suppressPush = false;
 
 setUnauthorizedHandler(() => {
   user = null;
@@ -52,10 +58,41 @@ function renderExerciseButtons() {
   }
 }
 
+function hideSuggest() {
+  const box = $('#exercise-suggest');
+  box.hidden = true;
+  box.innerHTML = '';
+}
+
+function updateSuggest() {
+  const box = $('#exercise-suggest');
+  const val = $('#exercise-input').value.trim();
+  box.innerHTML = '';
+  const matches = filterExercises(exercises, val).slice(0, 8);
+  for (const name of matches) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'suggest-item';
+    row.textContent = name;
+    row.addEventListener('pointerdown', (e) => { e.preventDefault(); selectExercise(name); });
+    box.appendChild(row);
+  }
+  if (val && !hasExercise(exercises, val)) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'suggest-item suggest-new';
+    add.textContent = `'${val}' 새 종목으로 추가`;
+    add.addEventListener('pointerdown', (e) => { e.preventDefault(); selectExercise(val); });
+    box.appendChild(add);
+  }
+  box.hidden = box.children.length === 0;
+}
+
 async function selectExercise(name) {
   selectedExercise = name;
   $('#exercise-input').value = name;
   renderExerciseButtons();
+  hideSuggest();
   $('#last-session').textContent = '지난번 기록 불러오는 중…';
   try {
     const { records } = await apiGet('/api/sets', { action: 'last', exercise: name, before: todayStr() });
@@ -76,30 +113,49 @@ async function selectExercise(name) {
 function renderToday() {
   const pending = pendingIds();
   const box = $('#today-list');
+  box.innerHTML = '';
   const groups = groupByExercise(todayRecords);
-  box.innerHTML = groups.length
-    ? ''
-    : '<p class="muted">아직 기록이 없어요. 첫 세트를 추가해보세요!</p>';
-  for (const g of groups) {
-    const div = document.createElement('div');
-    div.className = 'group';
-    const h = document.createElement('h3');
-    h.textContent = g.exercise;
-    div.appendChild(h);
-    for (const r of g.sets) {
-      const row = document.createElement('div');
-      row.className = 'set-row';
-      row.innerHTML =
-        `<span>${r.set}세트</span><span>${r.weight}kg × ${r.reps}</span>` +
-        (pending.has(r.id) ? '<span class="badge">전송 대기</span>' : '') +
-        '<button type="button" class="del">삭제</button>';
-      row.querySelector('.del').onclick = () => deleteSet(r);
-      div.appendChild(row);
-    }
-    box.appendChild(div);
+  if (!groups.length) {
+    box.innerHTML = '<p class="muted">아직 기록이 없어요. 첫 세트를 추가해보세요!</p>';
   }
-  $('#pending-badge').hidden = queue.size() === 0 && deleteQueue.size() === 0;
-  $('#offline-badge').hidden = !offline;
+  for (const g of groups) {
+    const top = g.sets.reduce((a, b) => (b.weight > a.weight ? b : a));
+    const card = document.createElement('div');
+    card.className = 'group';
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    const h3 = document.createElement('h3');
+    h3.textContent = g.exercise;
+    const meta = document.createElement('span');
+    meta.className = 'group-meta';
+    meta.textContent = `${g.sets.length}세트 · 최고 ${top.weight}kg`;
+    head.append(h3, meta);
+    card.appendChild(head);
+    const wrap = document.createElement('div');
+    wrap.className = 'pill-wrap';
+    for (const r of g.sets) {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'set-pill'
+        + (pending.has(r.id) ? ' pending' : '')
+        + (r.id === justAddedId ? ' pop' : '');
+      pill.textContent = `${r.weight}×${r.reps}`;
+      pill.setAttribute('aria-label', `${r.set}세트 ${r.weight}kg ${r.reps}회, 탭하면 수정`);
+      pill.onclick = () => openSetSheet(r);
+      wrap.appendChild(pill);
+    }
+    card.appendChild(wrap);
+    box.appendChild(card);
+  }
+  updateSummary();
+}
+
+function updateSummary() {
+  const el = $('#today-summary');
+  const s = summarizeToday(todayRecords);
+  if (!s.sets) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = `${s.exercises}종목 · ${s.sets}세트 · 총 ${Math.round(s.volume).toLocaleString()}kg`;
 }
 
 function setNotice(msg) {
@@ -129,8 +185,11 @@ function addSet() {
   queue.push(record);
   if (!exercises.includes(exercise)) exercises.unshift(exercise);
   selectedExercise = exercise;
+  justAddedId = record.id;
   renderExerciseButtons();
   renderToday();
+  requestAnimationFrame(() => { justAddedId = null; });
+  feedbackAdd();
   flushQueue();
 }
 
@@ -142,6 +201,55 @@ function deleteSet(record) {
   deleteQueue.push({ id: record.id });
   flushQueue();
   renderToday();
+}
+
+// ---- 세트 수정 바텀 시트 ----
+
+function openSetSheet(record) {
+  editingRecord = record;
+  $('#sheet-weight').value = record.weight;
+  $('#sheet-reps').value = record.reps;
+  const sheet = $('#set-sheet');
+  sheet.hidden = false;
+  requestAnimationFrame(() => sheet.classList.add('open'));
+  history.pushState({ tab: currentTab, overlay: 'sheet' }, '');
+}
+
+function closeSetSheet() {
+  const sheet = $('#set-sheet');
+  sheet.classList.remove('open');
+  setTimeout(() => { sheet.hidden = true; }, 220);
+  editingRecord = null;
+}
+
+async function saveSheet() {
+  if (!editingRecord) return;
+  const weight = Number($('#sheet-weight').value) || 0;
+  const reps = Number($('#sheet-reps').value);
+  if (!Number.isFinite(weight) || weight < 0 || weight > 2000) { setNotice('무게는 0~2000 사이로 입력해주세요'); return; }
+  if (!Number.isInteger(reps) || reps < 1 || reps > 1000) { setNotice('횟수는 1~1000 사이 정수로 입력해주세요'); return; }
+  const rec = editingRecord;
+  const prevW = rec.weight;
+  const prevR = rec.reps;
+  rec.weight = weight;
+  rec.reps = reps;
+  renderToday();
+  history.back(); // 시트 닫기 (popstate → closeSetSheet)
+  try {
+    await apiPost('/api/sets', { action: 'edit', id: rec.id, weight, reps });
+  } catch {
+    rec.weight = prevW;
+    rec.reps = prevR;
+    renderToday();
+    setNotice('수정 실패 — 다시 시도해주세요');
+  }
+}
+
+function deleteFromSheet() {
+  if (!editingRecord) return;
+  const rec = editingRecord;
+  history.back(); // 시트 닫기
+  deleteSet(rec);
 }
 
 let flushing = false;
@@ -193,7 +301,7 @@ async function renderHistory() {
   const box = $('#history-list');
   box.innerHTML = '<p class="muted">불러오는 중…</p>';
   try {
-    const { data, offline: off } = await cachedGet(
+    const { data } = await cachedGet(
       '/api/sets', { action: 'history', days: 90 }, `${cachePrefix}history`);
     const days = groupByDate(data.records);
     box.innerHTML = days.length ? '' : '<p class="muted">기록이 없어요</p>';
@@ -209,7 +317,6 @@ async function renderHistory() {
       }
       box.appendChild(det);
     }
-    if (off) box.insertAdjacentHTML('afterbegin', '<p class="badge">오프라인 데이터</p>');
   } catch {
     box.innerHTML = '<p class="muted">불러오기 실패</p>';
   }
@@ -268,7 +375,7 @@ async function renderBodyTab() {
   // 오늘 기록의 나머지 필드가 NULL로 덮이거나 행이 삭제될 수 있기 때문.
   setBodyInputsEnabled(false);
   try {
-    const { data, offline: off } = await cachedGet('/api/body', {}, `${cachePrefix}body`);
+    const { data } = await cachedGet('/api/body', {}, `${cachePrefix}body`);
     const rows = data.rows;
     const series = rows
       .filter((r) => r.weight !== null)
@@ -290,7 +397,6 @@ async function renderBodyTab() {
     $('#body-weight').value = today ? (today.weight ?? '') : '';
     $('#body-fat').value = today ? (today.bodyFatPct ?? '') : '';
     $('#body-muscle').value = today ? (today.muscleMass ?? '') : '';
-    if (off) list.insertAdjacentHTML('afterbegin', '<p class="badge">오프라인 데이터</p>');
     setBodyInputsEnabled(true);
   } catch {
     // 불러오기 실패 시 저장을 막아둔 채(덮어쓰기 방지) 재시도만 유도한다.
@@ -360,15 +466,26 @@ async function logout() {
 // ---- 탭 전환 & 부팅 ----
 
 function showTab(name) {
+  currentTab = name;
   for (const sec of document.querySelectorAll('.tab-panel')) {
     sec.hidden = sec.id !== `tab-${name}`;
   }
   for (const btn of document.querySelectorAll('.tab-bar button')) {
     btn.classList.toggle('selected', btn.dataset.tab === name);
   }
+  if (!suppressPush) history.pushState({ tab: name, overlay: null }, '');
   if (name === 'history') renderHistory();
   if (name === 'chart') renderChartTab();
   if (name === 'body') renderBodyTab();
+}
+
+// 폰 뒤로가기: 시트가 열려 있으면 시트만 닫고, 아니면 이전 탭으로.
+function onPopState(e) {
+  if (!$('#set-sheet').hidden) { closeSetSheet(); return; }
+  const tab = (e.state && e.state.tab) || 'today';
+  suppressPush = true;
+  showTab(tab);
+  suppressPush = false;
 }
 
 function bindEvents() {
@@ -377,13 +494,49 @@ function bindEvents() {
   });
   $('#add-btn').onclick = addSet;
   $('#chart-exercise').onchange = renderChartTab;
-  $('#exercise-input').oninput = () => {
-    selectedExercise = $('#exercise-input').value.trim();
-    renderExerciseButtons();
-  };
   $('#body-save-btn').onclick = saveBody;
   $('#profile-save-btn').onclick = saveProfile;
   $('#logout-btn').onclick = logout;
+
+  // 종목 자동완성
+  const exInput = $('#exercise-input');
+  exInput.addEventListener('input', () => {
+    selectedExercise = exInput.value.trim();
+    renderExerciseButtons();
+    updateSuggest();
+  });
+  exInput.addEventListener('focus', updateSuggest);
+  exInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideSuggest(); });
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.suggest-wrap')) hideSuggest();
+  });
+
+  // ± 스테퍼 (오늘 폼 + 시트 공용, 위임)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.step-plus, .step-minus');
+    if (!btn) return;
+    const stepper = btn.closest('.stepper');
+    const input = document.getElementById(stepper.dataset.for);
+    const step = Number(stepper.dataset.step);
+    const min = Number(stepper.dataset.min);
+    const max = Number(stepper.dataset.max);
+    const dir = btn.classList.contains('step-plus') ? 1 : -1;
+    const cur = Number(input.value) || 0;
+    let next = Math.round((cur + dir * step) * 100) / 100;
+    next = Math.max(min, Math.min(max, next));
+    input.value = String(next);
+  });
+
+  // 세트 수정 시트
+  $('#sheet-save').onclick = saveSheet;
+  $('#sheet-delete').onclick = deleteFromSheet;
+  $('#set-sheet').addEventListener('pointerdown', (e) => {
+    if (e.target.id === 'set-sheet') history.back(); // 바깥탭 → 닫기
+  });
+
+  // 앱 내 뒤로가기
+  window.addEventListener('popstate', onPopState);
+
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && user) {
       rolloverIfNewDay();
@@ -448,7 +601,11 @@ function startApp(me) {
   $('#chart-exercise').innerHTML = '';
   $('#last-session').textContent = '';
   setNotice('');
+  hideSuggest();
+  history.replaceState({ tab: 'today', overlay: null }, '');
+  suppressPush = true;
   showTab('today');
+  suppressPush = false;
   loadToday();
 }
 
