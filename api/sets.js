@@ -58,7 +58,7 @@ async function get(req, res, userId) {
   }
   if (p.action === 'exercises') {
     const rows = await q(
-      'SELECT exercise FROM workout_sets WHERE user_id=? GROUP BY exercise ORDER BY MAX(id) DESC LIMIT 30',
+      'SELECT exercise FROM workout_sets WHERE user_id=? GROUP BY exercise ORDER BY MAX(id) DESC LIMIT 200',
       [userId],
     );
     return res.json({ ok: true, exercises: rows.map((r) => r.exercise) });
@@ -89,6 +89,22 @@ async function post(req, res, userId) {
       if (err.code === 'ER_DUP_ENTRY') return res.json({ ok: true, duplicate: true });
       throw err;
     }
+    return res.json({ ok: true });
+  }
+  if (body.action === 'edit') {
+    const weight = Number(body.weight);
+    const reps = Number(body.reps);
+    if (!Number.isFinite(weight) || weight < 0 || weight > 2000) {
+      return res.status(400).json({ ok: false, error: 'bad weight' });
+    }
+    if (!Number.isInteger(reps) || reps < 1 || reps > 1000) {
+      return res.status(400).json({ ok: false, error: 'bad reps' });
+    }
+    await q(
+      'UPDATE workout_sets SET weight=?, reps=? WHERE user_id=? AND client_id=?',
+      [weight, reps, userId, String(body.id || '')],
+    );
+    // 값이 같으면 affectedRows=0이 될 수 있어 404로 오판하지 않는다(멱등 처리).
     return res.json({ ok: true });
   }
   if (body.action === 'delete') {
