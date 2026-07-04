@@ -16,7 +16,11 @@ GitHub Pages + Google Apps Script — 전부 무료.
 6. 오른쪽 위 **배포 > 새 배포 > 유형: 웹 앱**
    - 실행 계정: **나**
    - 액세스 권한: **모든 사용자**
-7. 배포 후 나오는 **웹 앱 URL**(`https://script.google.com/macros/s/…/exec`)을 복사
+7. **[배포]를 누르면 권한 승인 창이 뜬다** (최초 1회 필수):
+   - **액세스 승인** 클릭 → 본인 구글 계정 선택
+   - "Google에서 확인하지 않은 앱" 경고가 나오면 → **고급** 클릭 → **(프로젝트명)(안전하지 않음)으로 이동** → **허용**
+   - 본인이 직접 붙여넣은 스크립트라서 안전하다
+8. 배포 완료 후 나오는 **웹 앱 URL**(`https://script.google.com/macros/s/…/exec`)을 복사해서 토큰과 함께 메모해 둔다
 
 > 코드를 수정하면 **배포 > 배포 관리 > 연필 아이콘 > 버전: 새 버전**으로 다시 배포해야 반영된다.
 
@@ -25,6 +29,8 @@ GitHub Pages + Google Apps Script — 전부 무료.
 1. `https://<username>.github.io/gym-log/` 접속
 2. 최초 접속 시 웹 앱 URL과 토큰을 물어봄 → 위에서 만든 값 입력 (브라우저에 저장됨)
 3. 휴대폰 브라우저 메뉴에서 **홈 화면에 추가** → 앱처럼 사용
+   - **iPhone 주의**: 홈 화면 앱은 Safari와 저장소를 공유하지 않아서, 추가한 뒤 앱을 처음 열 때 URL과 토큰을 한 번 더 입력해야 한다. 두 값을 메모해 둘 것.
+   - 잘못 입력했다면 화면 오른쪽 위 **설정** 버튼으로 다시 입력할 수 있다.
 
 ## 동작 확인 (curl)
 
@@ -32,8 +38,8 @@ GitHub Pages + Google Apps Script — 전부 무료.
 # 조회 (빈 기록이면 records: [])
 curl -L "<웹앱URL>?token=<토큰>&action=today&date=2026-07-04"
 
-# 세트 추가
-curl -L -X POST "<웹앱URL>" -H "Content-Type: text/plain" \
+# 세트 추가 (-X POST를 쓰면 안 됨 — 리다이렉트에서 실패한다. -d만으로 POST가 된다)
+curl -L "<웹앱URL>" -H "Content-Type: text/plain" \
   -d '{"token":"<토큰>","action":"add","record":{"id":"test-1","date":"2026-07-04","exercise":"벤치프레스","weight":60,"reps":10,"set":1}}'
 ```
 

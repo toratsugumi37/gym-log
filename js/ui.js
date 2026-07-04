@@ -1,7 +1,7 @@
 // 엔트리포인트: 상태 관리 + 렌더링 + 이벤트. 데이터 가공은 store.js에 위임.
 
 import { apiGet, apiPost, cachedGet } from './api.js';
-import { ensureConfig } from './config.js';
+import { ensureConfig, resetConfig } from './config.js';
 import { createQueue } from './queue.js';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
@@ -10,11 +10,20 @@ import { renderChart } from './chart.js';
 
 const $ = (sel) => document.querySelector(sel);
 const queue = createQueue(localStorage);
+const deleteQueue = createQueue(localStorage, 'gymlog.pendingDeletes');
 
 let todayRecords = [];
 let exercises = [];
 let selectedExercise = null;
 let offline = false;
+let currentDate = todayStr();
+
+// 자정을 넘겨도 페이지가 살아있는 경우(PWA 등) 어제 기록이 '오늘'로 남지 않게 한다.
+function rolloverIfNewDay() {
+  if (currentDate === todayStr()) return;
+  currentDate = todayStr();
+  todayRecords = todayRecords.filter((r) => r.date === currentDate);
+}
 
 // ---- 오늘 탭 ----
 
@@ -42,6 +51,7 @@ async function selectExercise(name) {
   $('#last-session').textContent = '지난번 기록 불러오는 중…';
   try {
     const { records } = await apiGet({ action: 'last', exercise: name, before: todayStr() });
+    if (selectedExercise !== name) return; // 응답 대기 중 다른 종목을 선택함
     if (records.length) {
       const top = records.reduce((a, b) => (b.weight > a.weight ? b : a));
       $('#last-session').textContent = `지난번: ${summarizeSession(records)}`;
@@ -51,7 +61,7 @@ async function selectExercise(name) {
       $('#last-session').textContent = '이 종목은 첫 기록이에요!';
     }
   } catch {
-    $('#last-session').textContent = '';
+    if (selectedExercise === name) $('#last-session').textContent = '';
   }
 }
 
@@ -80,11 +90,12 @@ function renderToday() {
     }
     box.appendChild(div);
   }
-  $('#pending-badge').hidden = queue.size() === 0;
+  $('#pending-badge').hidden = queue.size() === 0 && deleteQueue.size() === 0;
   $('#offline-badge').hidden = !offline;
 }
 
 function addSet() {
+  rolloverIfNewDay();
   const exercise = $('#exercise-input').value.trim();
   const weight = Number($('#weight-input').value) || 0;
   const reps = Number($('#reps-input').value);
@@ -110,9 +121,12 @@ function addSet() {
 function deleteSet(record) {
   todayRecords = todayRecords.filter((r) => r.id !== record.id);
   if (pendingIds().has(record.id)) {
-    queue.remove(record.id); // 아직 서버에 없음 — 대기열에서만 제거
+    // 아직 미전송 — 대기열에서 제거. 전송 중이었다면 flushQueue가 서버 행을 정리한다.
+    queue.remove(record.id);
   } else {
-    apiPost({ action: 'delete', id: record.id }).catch(() => {});
+    // 서버에 이미 저장된 세트 — 삭제도 대기열로 보호해 오프라인에서 유실되지 않게 한다.
+    deleteQueue.push({ id: record.id });
+    flushQueue();
   }
   renderToday();
 }
@@ -121,15 +135,33 @@ let flushing = false;
 async function flushQueue() {
   if (flushing) return;
   flushing = true;
-  for (const record of queue.all()) {
-    try {
-      await apiPost({ action: 'add', record });
-      queue.remove(record.id);
-    } catch {
-      break; // 네트워크 불안정 — 다음 기회에 재시도
+  try {
+    // 밀린 삭제부터 처리
+    for (const item of deleteQueue.all()) {
+      try {
+        await apiPost({ action: 'delete', id: item.id });
+        deleteQueue.remove(item.id);
+      } catch (err) {
+        if (err && err.message === 'not found') deleteQueue.remove(item.id);
+        else throw err;
+      }
     }
+    // 대기열을 매 반복마다 다시 읽어, 전송 중에 추가/삭제된 세트도 반영한다.
+    while (queue.size() > 0) {
+      const record = queue.all()[0];
+      await apiPost({ action: 'add', record });
+      if (queue.all().some((r) => r.id === record.id)) {
+        queue.remove(record.id);
+      } else {
+        // 전송되는 사이 사용자가 삭제함 — 방금 서버에 생긴 행을 정리
+        await apiPost({ action: 'delete', id: record.id }).catch(() => {});
+      }
+    }
+  } catch {
+    // 네트워크 불안정 — 다음 기회에 재시도
+  } finally {
+    flushing = false;
   }
-  flushing = false;
   renderToday();
 }
 
@@ -165,14 +197,15 @@ async function renderHistory() {
 
 async function renderChartTab() {
   const select = $('#chart-exercise');
-  if (!select.options.length) {
-    for (const name of exercises) {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-    }
+  const previous = select.value;
+  select.innerHTML = '';
+  for (const name of exercises) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
   }
+  if (exercises.includes(previous)) select.value = previous;
   const exercise = select.value;
   if (!exercise) {
     $('#chart-box').innerHTML = '<p class="muted">기록이 쌓이면 차트가 나와요</p>';
@@ -210,6 +243,17 @@ async function init() {
     selectedExercise = $('#exercise-input').value.trim();
     renderExerciseButtons();
   };
+  $('#config-btn').onclick = () => {
+    resetConfig();
+    location.reload();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      rolloverIfNewDay();
+      renderToday();
+      flushQueue();
+    }
+  });
   showTab('today');
 
   try {
@@ -219,9 +263,11 @@ async function init() {
     ]);
     exercises = ex.data.exercises;
     offline = ex.offline || today.offline;
+    // 캐시가 어제 응답일 수 있으므로 서버/캐시 기록을 오늘 날짜로 거른다
+    const serverRecords = today.data.records.filter((r) => r.date === todayStr());
     // 서버 기록 + 아직 전송 안 된 오늘 대기열 합치기 (id 중복 제거)
-    const serverIds = new Set(today.data.records.map((r) => r.id));
-    todayRecords = today.data.records.concat(
+    const serverIds = new Set(serverRecords.map((r) => r.id));
+    todayRecords = serverRecords.concat(
       queue.all().filter((r) => r.date === todayStr() && !serverIds.has(r.id)),
     );
   } catch {
