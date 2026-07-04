@@ -10,41 +10,115 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
 </head>
 <body>
-  <header>
-    <h1>운동 기록</h1>
-    <span id="pending-badge" class="badge" hidden>전송 대기</span>
-    <span id="offline-badge" class="badge" hidden>오프라인</span>
-    <button id="config-btn" type="button" class="ghost">설정</button>
-  </header>
+  <section id="auth-screen" hidden>
+    <h1 class="auth-title">운동 기록</h1>
 
-  <nav class="tab-bar">
-    <button type="button" data-tab="today" class="selected">오늘</button>
-    <button type="button" data-tab="history">지난 기록</button>
-    <button type="button" data-tab="chart">차트</button>
-  </nav>
+    <form id="login-form">
+      <input id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="none">
+      <input id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+      <p id="login-error" class="error"></p>
+      <button type="submit" class="primary">로그인</button>
+      <button type="button" id="show-join" class="ghost wide">처음이에요 — 회원가입</button>
+    </form>
 
-  <main>
-    <section id="tab-today" class="tab-panel">
-      <div id="exercise-buttons" class="chips"></div>
-      <input id="exercise-input" type="text" placeholder="종목 (예: 벤치프레스)">
-      <p id="last-session" class="muted"></p>
-      <div class="row">
-        <input id="weight-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="무게(kg)">
-        <input id="reps-input" type="number" inputmode="numeric" min="1" placeholder="횟수">
-      </div>
-      <button id="add-btn" type="button" class="primary">세트 추가</button>
-      <div id="today-list"></div>
-    </section>
+    <form id="join-form" hidden>
+      <input id="join-username" type="text" placeholder="아이디 (영문/숫자 4~30자)" autocomplete="username" autocapitalize="none">
+      <input id="join-password" type="password" placeholder="비밀번호 (8자 이상)" autocomplete="new-password">
+      <input id="join-nickname" type="text" placeholder="닉네임">
+      <details class="optional-box">
+        <summary>몸 정보 입력 (선택 — 나중에 몸 탭에서 가능)</summary>
+        <div class="row">
+          <input id="join-birth" type="number" inputmode="numeric" placeholder="생년도 (예: 1995)">
+          <select id="join-gender">
+            <option value="">성별</option>
+            <option value="m">남</option>
+            <option value="f">여</option>
+          </select>
+        </div>
+        <div class="row">
+          <input id="join-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
+          <input id="join-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
+        </div>
+        <input id="join-goal-text" type="text" placeholder="목표 한 줄 (예: 벤치 100 치기)">
+      </details>
+      <p id="join-error" class="error"></p>
+      <button type="submit" class="primary">가입하기</button>
+      <button type="button" id="show-login" class="ghost wide">이미 계정 있어요 — 로그인</button>
+    </form>
+  </section>
 
-    <section id="tab-history" class="tab-panel" hidden>
-      <div id="history-list"></div>
-    </section>
+  <div id="app" hidden>
+    <header>
+      <h1>운동 기록</h1>
+      <span id="nickname" class="muted"></span>
+      <span id="pending-badge" class="badge" hidden>전송 대기</span>
+      <span id="offline-badge" class="badge" hidden>오프라인</span>
+    </header>
 
-    <section id="tab-chart" class="tab-panel" hidden>
-      <select id="chart-exercise"></select>
-      <div id="chart-box"></div>
-    </section>
-  </main>
+    <nav class="tab-bar">
+      <button type="button" data-tab="today" class="selected">오늘</button>
+      <button type="button" data-tab="history">기록</button>
+      <button type="button" data-tab="chart">차트</button>
+      <button type="button" data-tab="body">몸</button>
+    </nav>
+
+    <main>
+      <section id="tab-today" class="tab-panel">
+        <div id="exercise-buttons" class="chips"></div>
+        <input id="exercise-input" type="text" placeholder="종목 (예: 벤치프레스)">
+        <p id="last-session" class="muted"></p>
+        <div class="row">
+          <input id="weight-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="무게(kg)">
+          <input id="reps-input" type="number" inputmode="numeric" min="1" placeholder="횟수">
+        </div>
+        <button id="add-btn" type="button" class="primary">세트 추가</button>
+        <div id="today-list"></div>
+      </section>
+
+      <section id="tab-history" class="tab-panel" hidden>
+        <div id="history-list"></div>
+      </section>
+
+      <section id="tab-chart" class="tab-panel" hidden>
+        <select id="chart-exercise"></select>
+        <div id="chart-box"></div>
+      </section>
+
+      <section id="tab-body" class="tab-panel" hidden>
+        <p class="muted">오늘 몸 상태 (아는 것만 입력)</p>
+        <div class="row">
+          <input id="body-weight" type="number" inputmode="decimal" step="0.1" placeholder="몸무게(kg)">
+          <input id="body-fat" type="number" inputmode="decimal" step="0.1" placeholder="체지방(%)">
+          <input id="body-muscle" type="number" inputmode="decimal" step="0.1" placeholder="골격근(kg)">
+        </div>
+        <button id="body-save-btn" type="button" class="primary">몸 상태 저장</button>
+        <p id="goal-line" class="muted"></p>
+        <div id="body-chart"></div>
+        <div id="body-list"></div>
+
+        <details class="optional-box">
+          <summary>프로필 / 목표 수정</summary>
+          <input id="profile-nickname" type="text" placeholder="닉네임">
+          <div class="row">
+            <input id="profile-birth" type="number" inputmode="numeric" placeholder="생년도">
+            <select id="profile-gender">
+              <option value="">성별</option>
+              <option value="m">남</option>
+              <option value="f">여</option>
+            </select>
+          </div>
+          <div class="row">
+            <input id="profile-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
+            <input id="profile-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
+          </div>
+          <input id="profile-goal-text" type="text" placeholder="목표 한 줄">
+          <p id="profile-error" class="error"></p>
+          <button id="profile-save-btn" type="button" class="primary">프로필 저장</button>
+        </details>
+        <button id="logout-btn" type="button" class="ghost wide">로그아웃</button>
+      </section>
+    </main>
+  </div>
 
   <script type="module" src="js/ui.js"></script>
 </body>

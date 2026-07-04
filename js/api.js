@@ -1,38 +1,43 @@
-// Apps Script 웹앱 호출. CORS 제약 때문에 POST는 text/plain으로 보낸다
-// (application/json이면 GAS가 preflight를 처리하지 못한다).
+// same-origin /api/* 호출. 세션 쿠키는 브라우저가 자동으로 붙인다.
 
-import { ensureConfig } from './config.js';
+let onUnauthorized = () => {};
 
-export async function apiGet(params) {
-  const config = ensureConfig();
-  if (!config) throw new Error('설정 없음');
-  const qs = new URLSearchParams({ ...params, token: config.token });
-  const res = await fetch(`${config.url}?${qs}`);
-  const data = await res.json();
+export function setUnauthorizedHandler(fn) {
+  onUnauthorized = fn;
+}
+
+async function request(path, options) {
+  const res = await fetch(path, options);
+  const data = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+  if (res.status === 401 && data.error === 'unauthorized') {
+    onUnauthorized();
+    throw new Error('unauthorized');
+  }
   if (!data.ok) throw new Error(data.error || 'API 오류');
   return data;
 }
 
-export async function apiPost(body) {
-  const config = ensureConfig();
-  if (!config) throw new Error('설정 없음');
-  const res = await fetch(config.url, {
+export async function apiGet(path, params = {}) {
+  const qs = new URLSearchParams(params);
+  return request(`${path}?${qs}`);
+}
+
+export async function apiPost(path, body) {
+  return request(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ ...body, token: config.token }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'API 오류');
-  return data;
 }
 
-export async function cachedGet(params, cacheKey, storage = localStorage) {
+export async function cachedGet(path, params, cacheKey, storage = localStorage) {
   const key = `gymlog.cache.${cacheKey}`;
   try {
-    const data = await apiGet(params);
+    const data = await apiGet(path, params);
     storage.setItem(key, JSON.stringify(data));
     return { data, offline: false };
   } catch (err) {
+    if (err.message === 'unauthorized') throw err; // 로그아웃 상태에서 캐시를 보여주면 안 됨
     const cached = storage.getItem(key);
     if (cached) return { data: JSON.parse(cached), offline: true };
     throw err;

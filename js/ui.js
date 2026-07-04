@@ -1,7 +1,7 @@
-// 엔트리포인트: 상태 관리 + 렌더링 + 이벤트. 데이터 가공은 store.js에 위임.
+// 엔트리포인트: 인증 확인 → 앱 부팅. 데이터 가공은 store.js에 위임.
 
-import { apiGet, apiPost, cachedGet } from './api.js';
-import { ensureConfig, resetConfig } from './config.js';
+import { apiGet, apiPost, cachedGet, setUnauthorizedHandler } from './api.js';
+import { initAuth, showAuthScreen } from './auth-ui.js';
 import { createQueue } from './queue.js';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
@@ -9,16 +9,20 @@ import {
 import { renderChart } from './chart.js';
 
 const $ = (sel) => document.querySelector(sel);
-const queue = createQueue(localStorage);
-const deleteQueue = createQueue(localStorage, 'gymlog.pendingDeletes');
 
+let user = null;
+let cachePrefix = '';
+let queue = null;
+let deleteQueue = null;
 let todayRecords = [];
 let exercises = [];
 let selectedExercise = null;
 let offline = false;
 let currentDate = todayStr();
+let eventsBound = false;
 
-// 자정을 넘겨도 페이지가 살아있는 경우(PWA 등) 어제 기록이 '오늘'로 남지 않게 한다.
+setUnauthorizedHandler(showAuthScreen);
+
 function rolloverIfNewDay() {
   if (currentDate === todayStr()) return;
   currentDate = todayStr();
@@ -50,8 +54,8 @@ async function selectExercise(name) {
   renderExerciseButtons();
   $('#last-session').textContent = '지난번 기록 불러오는 중…';
   try {
-    const { records } = await apiGet({ action: 'last', exercise: name, before: todayStr() });
-    if (selectedExercise !== name) return; // 응답 대기 중 다른 종목을 선택함
+    const { records } = await apiGet('/api/sets', { action: 'last', exercise: name, before: todayStr() });
+    if (selectedExercise !== name) return;
     if (records.length) {
       const top = records.reduce((a, b) => (b.weight > a.weight ? b : a));
       $('#last-session').textContent = `지난번: ${summarizeSession(records)}`;
@@ -121,10 +125,8 @@ function addSet() {
 function deleteSet(record) {
   todayRecords = todayRecords.filter((r) => r.id !== record.id);
   if (pendingIds().has(record.id)) {
-    // 아직 미전송 — 대기열에서 제거. 전송 중이었다면 flushQueue가 서버 행을 정리한다.
-    queue.remove(record.id);
+    queue.remove(record.id); // 전송 중이었다면 flushQueue가 서버 행을 정리
   } else {
-    // 서버에 이미 저장된 세트 — 삭제도 대기열로 보호해 오프라인에서 유실되지 않게 한다.
     deleteQueue.push({ id: record.id });
     flushQueue();
   }
@@ -136,25 +138,23 @@ async function flushQueue() {
   if (flushing) return;
   flushing = true;
   try {
-    // 밀린 삭제부터 처리
     for (const item of deleteQueue.all()) {
       try {
-        await apiPost({ action: 'delete', id: item.id });
+        await apiPost('/api/sets', { action: 'delete', id: item.id });
         deleteQueue.remove(item.id);
       } catch (err) {
         if (err && err.message === 'not found') deleteQueue.remove(item.id);
         else throw err;
       }
     }
-    // 대기열을 매 반복마다 다시 읽어, 전송 중에 추가/삭제된 세트도 반영한다.
     while (queue.size() > 0) {
       const record = queue.all()[0];
-      await apiPost({ action: 'add', record });
+      await apiPost('/api/sets', { action: 'add', record });
       if (queue.all().some((r) => r.id === record.id)) {
         queue.remove(record.id);
       } else {
         // 전송되는 사이 사용자가 삭제함 — 방금 서버에 생긴 행을 정리
-        await apiPost({ action: 'delete', id: record.id }).catch(() => {});
+        await apiPost('/api/sets', { action: 'delete', id: record.id }).catch(() => {});
       }
     }
   } catch {
@@ -165,13 +165,14 @@ async function flushQueue() {
   renderToday();
 }
 
-// ---- 지난 기록 탭 ----
+// ---- 기록 탭 ----
 
 async function renderHistory() {
   const box = $('#history-list');
   box.innerHTML = '<p class="muted">불러오는 중…</p>';
   try {
-    const { data, offline: off } = await cachedGet({ action: 'history', days: 90 }, 'history');
+    const { data, offline: off } = await cachedGet(
+      '/api/sets', { action: 'history', days: 90 }, `${cachePrefix}history`);
     const days = groupByDate(data.records);
     box.innerHTML = days.length ? '' : '<p class="muted">기록이 없어요</p>';
     for (const day of days) {
@@ -181,8 +182,7 @@ async function renderHistory() {
       det.appendChild(sum);
       for (const g of day.groups) {
         const p = document.createElement('p');
-        p.textContent = `${g.exercise}: ` +
-          g.sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ');
+        p.textContent = `${g.exercise}: ` + g.sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ');
         det.appendChild(p);
       }
       box.appendChild(det);
@@ -212,14 +212,107 @@ async function renderChartTab() {
     return;
   }
   try {
-    const { data } = await cachedGet({ action: 'chart', exercise }, `chart.${exercise}`);
+    const { data } = await cachedGet(
+      '/api/sets', { action: 'chart', exercise }, `${cachePrefix}chart.${exercise}`);
     renderChart($('#chart-box'), data.series);
   } catch {
     $('#chart-box').innerHTML = '<p class="muted">불러오기 실패</p>';
   }
 }
 
-// ---- 탭 전환 & 초기화 ----
+// ---- 몸 탭 ----
+
+function fillProfileForm() {
+  $('#profile-nickname').value = user.nickname || '';
+  $('#profile-birth').value = user.birthYear ?? '';
+  $('#profile-gender').value = user.gender ?? '';
+  $('#profile-height').value = user.heightCm ?? '';
+  $('#profile-goal-weight').value = user.goalWeight ?? '';
+  $('#profile-goal-text').value = user.goalText ?? '';
+  $('#goal-line').textContent = user.goalText
+    ? `목표: ${user.goalText}${user.goalWeight ? ` (${user.goalWeight}kg)` : ''}`
+    : (user.goalWeight ? `목표 몸무게: ${user.goalWeight}kg` : '');
+}
+
+async function renderBodyTab() {
+  fillProfileForm();
+  try {
+    const { data, offline: off } = await cachedGet('/api/body', {}, `${cachePrefix}body`);
+    const rows = data.rows;
+    const series = rows
+      .filter((r) => r.weight !== null)
+      .map((r) => ({ date: r.date, weight: r.weight }));
+    renderChart($('#body-chart'), series, { goal: user.goalWeight });
+    const list = $('#body-list');
+    list.innerHTML = '';
+    for (const r of rows.slice(-14).reverse()) {
+      const parts = [];
+      if (r.weight !== null) parts.push(`${r.weight}kg`);
+      if (r.bodyFatPct !== null) parts.push(`체지방 ${r.bodyFatPct}%`);
+      if (r.muscleMass !== null) parts.push(`골격근 ${r.muscleMass}kg`);
+      const p = document.createElement('p');
+      p.textContent = `${r.date} — ${parts.join(' / ')}`;
+      list.appendChild(p);
+    }
+    const today = rows.find((r) => r.date === todayStr());
+    if (today) {
+      $('#body-weight').value = today.weight ?? '';
+      $('#body-fat').value = today.bodyFatPct ?? '';
+      $('#body-muscle').value = today.muscleMass ?? '';
+    }
+    if (off) list.insertAdjacentHTML('afterbegin', '<p class="badge">오프라인 데이터</p>');
+  } catch {
+    $('#body-list').innerHTML = '<p class="muted">불러오기 실패</p>';
+  }
+}
+
+async function saveBody() {
+  const val = (sel) => {
+    const v = $(sel).value.trim();
+    return v === '' ? null : Number(v);
+  };
+  try {
+    await apiPost('/api/body', {
+      date: todayStr(),
+      weight: val('#body-weight'),
+      bodyFatPct: val('#body-fat'),
+      muscleMass: val('#body-muscle'),
+    });
+    renderBodyTab();
+  } catch (err) {
+    $('#body-list').innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+async function saveProfile() {
+  $('#profile-error').textContent = '';
+  const opt = (sel) => {
+    const v = $(sel).value.trim();
+    return v === '' ? null : v;
+  };
+  try {
+    const data = await apiPost('/api/auth?action=profile', {
+      nickname: $('#profile-nickname').value.trim(),
+      birthYear: opt('#profile-birth'),
+      gender: opt('#profile-gender'),
+      heightCm: opt('#profile-height'),
+      goalWeight: opt('#profile-goal-weight'),
+      goalText: opt('#profile-goal-text'),
+    });
+    user = data.user;
+    $('#nickname').textContent = user.nickname;
+    renderBodyTab();
+  } catch (err) {
+    $('#profile-error').textContent = err.message;
+  }
+}
+
+async function logout() {
+  try { await apiPost('/api/auth?action=logout', {}); } catch { /* 무시 */ }
+  showAuthScreen();
+}
+
+// ---- 탭 전환 & 부팅 ----
 
 function showTab(name) {
   for (const sec of document.querySelectorAll('.tab-panel')) {
@@ -230,10 +323,10 @@ function showTab(name) {
   }
   if (name === 'history') renderHistory();
   if (name === 'chart') renderChartTab();
+  if (name === 'body') renderBodyTab();
 }
 
-async function init() {
-  ensureConfig();
+function bindEvents() {
   document.querySelectorAll('.tab-bar button').forEach((btn) => {
     btn.onclick = () => showTab(btn.dataset.tab);
   });
@@ -243,38 +336,36 @@ async function init() {
     selectedExercise = $('#exercise-input').value.trim();
     renderExerciseButtons();
   };
-  $('#config-btn').onclick = () => {
-    resetConfig();
-    location.reload();
-  };
+  $('#body-save-btn').onclick = saveBody;
+  $('#profile-save-btn').onclick = saveProfile;
+  $('#logout-btn').onclick = logout;
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
+    if (!document.hidden && user) {
       rolloverIfNewDay();
       renderToday();
       flushQueue();
     }
   });
-  showTab('today');
+}
 
+async function loadToday() {
   try {
     const [ex, today] = await Promise.all([
-      cachedGet({ action: 'exercises' }, 'exercises'),
-      cachedGet({ action: 'today', date: todayStr() }, 'today'),
+      cachedGet('/api/sets', { action: 'exercises' }, `${cachePrefix}exercises`),
+      cachedGet('/api/sets', { action: 'today', date: todayStr() }, `${cachePrefix}today`),
     ]);
     exercises = ex.data.exercises;
     offline = ex.offline || today.offline;
-    // 캐시가 어제 응답일 수 있으므로 서버/캐시 기록을 오늘 날짜로 거른다
     const serverRecords = today.data.records.filter((r) => r.date === todayStr());
-    // 서버 기록 + 아직 전송 안 된 오늘 대기열 합치기 (id 중복 제거)
     const serverIds = new Set(serverRecords.map((r) => r.id));
     todayRecords = serverRecords.concat(
       queue.all().filter((r) => r.date === todayStr() && !serverIds.has(r.id)),
     );
-  } catch {
+  } catch (err) {
+    if (err.message === 'unauthorized') return;
     offline = true;
     todayRecords = queue.all().filter((r) => r.date === todayStr());
   }
-  // 서버 종목 목록에 없는 오늘 기록 종목도 버튼으로 노출 (오프라인 대비)
   for (const r of todayRecords) {
     if (!exercises.includes(r.exercise)) exercises.unshift(r.exercise);
   }
@@ -283,4 +374,34 @@ async function init() {
   flushQueue();
 }
 
-init();
+function startApp(me) {
+  user = me;
+  cachePrefix = `u.${me.username}.`;
+  queue = createQueue(localStorage, `gymlog.pending.${me.username}`);
+  deleteQueue = createQueue(localStorage, `gymlog.pendingDeletes.${me.username}`);
+  $('#auth-screen').hidden = true;
+  $('#app').hidden = false;
+  $('#nickname').textContent = me.nickname;
+  if (!eventsBound) {
+    bindEvents();
+    eventsBound = true;
+  }
+  todayRecords = [];
+  exercises = [];
+  selectedExercise = null;
+  currentDate = todayStr();
+  showTab('today');
+  loadToday();
+}
+
+async function main() {
+  initAuth(startApp);
+  try {
+    const { user: me } = await apiGet('/api/auth', { action: 'me' });
+    startApp(me);
+  } catch {
+    showAuthScreen();
+  }
+}
+
+main();
