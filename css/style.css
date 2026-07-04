@@ -210,9 +210,11 @@ button.primary:disabled, input:disabled, select:disabled { opacity: 0.45; }
   list-style: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   cursor: pointer;
 }
+#history-list .hist-count { margin-left: auto; font-size: 14px; font-weight: 500; color: var(--label-2); }
+.hist-ex { font-size: 15px; font-weight: 600; color: var(--label); padding: 6px 16px 8px; }
 #history-list summary::-webkit-details-marker { display: none; }
 #history-list summary::after {
   content: '';
@@ -223,8 +225,7 @@ button.primary:disabled, input:disabled, select:disabled { opacity: 0.45; }
   transition: transform 0.2s ease;
 }
 #history-list details[open] summary::after { transform: rotate(45deg); }
-#history-list details p { padding: 6px 16px 14px; font-size: 15px; color: var(--label-2); }
-#history-list .badge { margin: 0 0 10px 2px; }
+#history-list .pill-wrap:last-child { padding-bottom: 14px; }
 
 /* ===== 차트 ===== */
 .menu-select {
@@ -435,3 +436,13 @@ main { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0)); }
 .sheet-handle { width: 36px; height: 5px; border-radius: 3px; background: var(--label-3); margin: 6px auto 14px; }
 .sheet-title { text-align: center; font-size: 17px; font-weight: 600; margin-bottom: 16px; }
 .sheet .danger-btn { margin-top: 8px; background: transparent; }
+
+/* ===== 토스트 ===== */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(78px + env(safe-area-inset-bottom, 0)); z-index: 200;
+  background: rgba(30, 30, 32, 0.94); color: #fff;
+  padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 500;
+  max-width: 84%; text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}

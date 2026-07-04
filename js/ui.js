@@ -5,7 +5,7 @@ import { initAuth, showAuthScreen } from './auth-ui.js';
 import { createQueue } from './queue.js';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
-  summarizeToday, filterExercises, hasExercise,
+  summarizeToday, filterExercises, hasExercise, formatDateLabel,
 } from './store.js';
 import { renderChart } from './chart.js';
 import { feedbackAdd } from './feedback.js';
@@ -141,7 +141,24 @@ function renderToday() {
         + (r.id === justAddedId ? ' pop' : '');
       pill.textContent = `${r.weight}×${r.reps}`;
       pill.setAttribute('aria-label', `${r.set}세트 ${r.weight}kg ${r.reps}회, 탭하면 수정`);
-      pill.onclick = () => openSetSheet(r);
+      pill.onclick = () => openSetSheet(r, {
+        onSave: async (weight, reps) => {
+          const prevW = r.weight;
+          const prevR = r.reps;
+          r.weight = weight;
+          r.reps = reps;
+          renderToday();
+          try {
+            await apiPost('/api/sets', { action: 'edit', id: r.id, weight, reps });
+          } catch {
+            r.weight = prevW;
+            r.reps = prevR;
+            renderToday();
+            toast('수정 실패 — 다시 시도해주세요');
+          }
+        },
+        onDelete: () => deleteSet(r),
+      });
       wrap.appendChild(pill);
     }
     card.appendChild(wrap);
@@ -160,6 +177,15 @@ function updateSummary() {
 
 function setNotice(msg) {
   $('#today-notice').textContent = msg || '';
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
 }
 
 function addSet() {
@@ -205,8 +231,15 @@ function deleteSet(record) {
 
 // ---- 세트 수정 바텀 시트 ----
 
-function openSetSheet(record) {
+// 시트는 오늘·지난 기록 양쪽이 쓴다. 저장/삭제 로직은 호출자가 콜백으로 주입한다.
+let sheetOnSave = null;
+let sheetOnDelete = null;
+
+function openSetSheet(record, { onSave, onDelete }) {
   editingRecord = record;
+  sheetOnSave = onSave;
+  sheetOnDelete = onDelete;
+  $('#sheet-title').textContent = record.exercise;
   $('#sheet-weight').value = record.weight;
   $('#sheet-reps').value = record.reps;
   const sheet = $('#set-sheet');
@@ -220,36 +253,26 @@ function closeSetSheet() {
   sheet.classList.remove('open');
   setTimeout(() => { sheet.hidden = true; }, 220);
   editingRecord = null;
+  sheetOnSave = null;
+  sheetOnDelete = null;
 }
 
 async function saveSheet() {
   if (!editingRecord) return;
   const weight = Number($('#sheet-weight').value) || 0;
   const reps = Number($('#sheet-reps').value);
-  if (!Number.isFinite(weight) || weight < 0 || weight > 2000) { setNotice('무게는 0~2000 사이로 입력해주세요'); return; }
-  if (!Number.isInteger(reps) || reps < 1 || reps > 1000) { setNotice('횟수는 1~1000 사이 정수로 입력해주세요'); return; }
-  const rec = editingRecord;
-  const prevW = rec.weight;
-  const prevR = rec.reps;
-  rec.weight = weight;
-  rec.reps = reps;
-  renderToday();
+  if (!Number.isFinite(weight) || weight < 0 || weight > 2000) { toast('무게는 0~2000 사이로 입력해주세요'); return; }
+  if (!Number.isInteger(reps) || reps < 1 || reps > 1000) { toast('횟수는 1~1000 사이 정수로 입력해주세요'); return; }
+  const fn = sheetOnSave;
   history.back(); // 시트 닫기 (popstate → closeSetSheet)
-  try {
-    await apiPost('/api/sets', { action: 'edit', id: rec.id, weight, reps });
-  } catch {
-    rec.weight = prevW;
-    rec.reps = prevR;
-    renderToday();
-    setNotice('수정 실패 — 다시 시도해주세요');
-  }
+  await fn(weight, reps);
 }
 
 function deleteFromSheet() {
   if (!editingRecord) return;
-  const rec = editingRecord;
+  const fn = sheetOnDelete;
   history.back(); // 시트 닫기
-  deleteSet(rec);
+  fn();
 }
 
 let flushing = false;
@@ -297,29 +320,90 @@ async function flushQueue() {
 
 // ---- 기록 탭 ----
 
+let historyRecords = [];
+
 async function renderHistory() {
   const box = $('#history-list');
   box.innerHTML = '<p class="muted">불러오는 중…</p>';
   try {
     const { data } = await cachedGet(
       '/api/sets', { action: 'history', days: 90 }, `${cachePrefix}history`);
-    const days = groupByDate(data.records);
-    box.innerHTML = days.length ? '' : '<p class="muted">기록이 없어요</p>';
-    for (const day of days) {
-      const det = document.createElement('details');
-      const sum = document.createElement('summary');
-      sum.textContent = day.date;
-      det.appendChild(sum);
-      for (const g of day.groups) {
-        const p = document.createElement('p');
-        p.textContent = `${g.exercise}: ` + g.sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ');
-        det.appendChild(p);
-      }
-      box.appendChild(det);
-    }
+    historyRecords = data.records;
   } catch {
     box.innerHTML = '<p class="muted">불러오기 실패</p>';
+    return;
   }
+  paintHistory();
+}
+
+function paintHistory() {
+  const box = $('#history-list');
+  const days = groupByDate(historyRecords);
+  box.innerHTML = days.length ? '' : '<p class="muted">기록이 없어요</p>';
+  for (const day of days) {
+    const det = document.createElement('details');
+    const sum = document.createElement('summary');
+    const label = document.createElement('span');
+    label.textContent = formatDateLabel(day.date);
+    const count = document.createElement('span');
+    count.className = 'hist-count';
+    count.textContent = `${day.groups.reduce((n, g) => n + g.sets.length, 0)}세트`;
+    sum.append(label, count);
+    det.appendChild(sum);
+    for (const g of day.groups) {
+      const ex = document.createElement('div');
+      ex.className = 'hist-ex';
+      ex.textContent = g.exercise;
+      det.appendChild(ex);
+      const wrap = document.createElement('div');
+      wrap.className = 'pill-wrap';
+      for (const s of g.sets) {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'set-pill';
+        pill.textContent = `${s.weight}×${s.reps}`;
+        pill.setAttribute('aria-label', `${g.exercise} ${s.weight}kg ${s.reps}회, 탭하면 수정`);
+        pill.onclick = () => openHistorySheet(s);
+        wrap.appendChild(pill);
+      }
+      det.appendChild(wrap);
+    }
+    box.appendChild(det);
+  }
+}
+
+function openHistorySheet(s) {
+  openSetSheet(s, {
+    onSave: async (weight, reps) => {
+      const prevW = s.weight;
+      const prevR = s.reps;
+      s.weight = weight;
+      s.reps = reps;
+      paintHistory();
+      try {
+        await apiPost('/api/sets', { action: 'edit', id: s.id, weight, reps });
+      } catch {
+        s.weight = prevW;
+        s.reps = prevR;
+        paintHistory();
+        toast('수정 실패 — 다시 시도해주세요');
+      }
+    },
+    onDelete: async () => {
+      const removed = historyRecords.find((r) => r.id === s.id);
+      if (!removed) return;
+      historyRecords = historyRecords.filter((r) => r.id !== s.id);
+      paintHistory();
+      try {
+        await apiPost('/api/sets', { action: 'delete', id: s.id });
+      } catch (err) {
+        if (err && err.message === 'not found') return; // 이미 없음 → 성공으로 간주
+        historyRecords.push(removed);
+        paintHistory();
+        toast('삭제 실패 — 다시 시도해주세요');
+      }
+    },
+  });
 }
 
 // ---- 차트 탭 ----
