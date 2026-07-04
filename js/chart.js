@@ -1,3 +1,39 @@
-export function renderChart(el) {
-  el.innerHTML = '<p class="muted">준비 중</p>';
+// 외부 라이브러리 없는 SVG 꺾은선 차트.
+
+export function scalePoints(series, width, height, pad = 30) {
+  if (!series.length) return [];
+  const weights = series.map((p) => p.weight);
+  const min = Math.min(...weights);
+  const span = Math.max(...weights) - min || 1;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+  const step = series.length > 1 ? innerW / (series.length - 1) : 0;
+  return series.map((p, i) => ({
+    ...p,
+    x: pad + (series.length > 1 ? i * step : innerW / 2),
+    y: pad + innerH - ((p.weight - min) / span) * innerH,
+  }));
+}
+
+export function renderChart(el, series) {
+  const W = 340;
+  const H = 220;
+  if (!series.length) {
+    el.innerHTML = '<p class="muted">이 종목은 아직 기록이 없어요</p>';
+    return;
+  }
+  const pts = scalePoints(series, W, H);
+  const line = pts.map((p) => `${p.x},${p.y}`).join(' ');
+  const dots = pts.map((p) =>
+    `<circle cx="${p.x}" cy="${p.y}" r="4"></circle>` +
+    `<text x="${p.x}" y="${p.y - 10}" text-anchor="middle">${p.weight}</text>`,
+  ).join('');
+  const first = series[0].date.slice(5);
+  const last = series[series.length - 1].date.slice(5);
+  el.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="무게 변화 차트">` +
+    `<polyline points="${line}" fill="none"></polyline>${dots}` +
+    `<text x="30" y="${H - 8}">${first}</text>` +
+    `<text x="${W - 30}" y="${H - 8}" text-anchor="end">${last}</text>` +
+    '</svg>';
 }
