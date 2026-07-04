@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
-  summarizeToday, filterExercises, hasExercise,
+  summarizeToday, filterExercises, hasExercise, formatDateLabel,
 } from '../js/store.js';
 
 const records = [
@@ -66,4 +66,10 @@ test('hasExercise: 공백·대소문자 무시 정확일치', () => {
   assert.equal(hasExercise(list, '벤치프레스'), true);
   assert.equal(hasExercise(list, 'lat  pulldown'), true);
   assert.equal(hasExercise(list, '벤치'), false);
+});
+
+test('formatDateLabel: M월 D일 (요일), 로컬 기준', () => {
+  assert.equal(formatDateLabel('2026-07-05'), '7월 5일 (일)'); // 2026-07-05는 일요일
+  assert.equal(formatDateLabel('2026-07-06'), '7월 6일 (월)');
+  assert.equal(formatDateLabel('2026-12-25'), '12월 25일 (금)'); // 2026-12-25는 금요일
 });

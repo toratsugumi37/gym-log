@@ -65,3 +65,11 @@ export function hasExercise(list, name) {
   const target = normEx(name);
   return list.some((e) => normEx(e) === target);
 }
+
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+export function formatDateLabel(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const day = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  return `${m}월 ${d}일 (${day})`;
+}
