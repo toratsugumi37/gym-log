@@ -62,24 +62,31 @@
 
   <!-- 앱 -->
   <div id="app" hidden>
-    <div class="status-pills">
-      <span id="pending-badge" class="badge" hidden>전송 대기</span>
-      <span id="offline-badge" class="badge badge-gray" hidden>오프라인</span>
-    </div>
-
     <main>
       <!-- 오늘 -->
       <section id="tab-today" class="tab-panel">
         <h1 class="large-title">오늘</h1>
+        <p id="today-summary" class="today-summary" hidden></p>
 
         <p class="section-label">새 세트</p>
         <div class="card">
           <div id="exercise-buttons" class="chips"></div>
-          <input id="exercise-input" type="text" maxlength="50" placeholder="종목 (예: 벤치프레스)">
+          <div class="suggest-wrap">
+            <input id="exercise-input" type="text" maxlength="50" autocomplete="off" placeholder="종목 (예: 벤치프레스)">
+            <div id="exercise-suggest" class="suggest" hidden></div>
+          </div>
           <p id="last-session" class="hint"></p>
-          <div class="row">
-            <input id="weight-input" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
-            <input id="reps-input" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
+          <div class="stepper-row">
+            <div class="stepper" data-for="weight-input" data-step="2.5" data-min="0" data-max="2000">
+              <button type="button" class="step-minus" aria-label="무게 감소">−</button>
+              <input id="weight-input" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
+              <button type="button" class="step-plus" aria-label="무게 증가">+</button>
+            </div>
+            <div class="stepper" data-for="reps-input" data-step="1" data-min="1" data-max="1000">
+              <button type="button" class="step-minus" aria-label="횟수 감소">−</button>
+              <input id="reps-input" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
+              <button type="button" class="step-plus" aria-label="횟수 증가">+</button>
+            </div>
           </div>
           <button id="add-btn" type="button" class="primary">세트 추가</button>
           <p id="today-notice" class="error"></p>
@@ -148,6 +155,27 @@
         <button id="logout-btn" type="button" class="danger-btn">로그아웃</button>
       </section>
     </main>
+
+    <div id="set-sheet" class="sheet-backdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="세트 수정">
+        <div class="sheet-handle"></div>
+        <h3 id="sheet-title" class="sheet-title">세트 수정</h3>
+        <div class="stepper-row">
+          <div class="stepper" data-for="sheet-weight" data-step="2.5" data-min="0" data-max="2000">
+            <button type="button" class="step-minus" aria-label="무게 감소">−</button>
+            <input id="sheet-weight" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
+            <button type="button" class="step-plus" aria-label="무게 증가">+</button>
+          </div>
+          <div class="stepper" data-for="sheet-reps" data-step="1" data-min="1" data-max="1000">
+            <button type="button" class="step-minus" aria-label="횟수 감소">−</button>
+            <input id="sheet-reps" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
+            <button type="button" class="step-plus" aria-label="횟수 증가">+</button>
+          </div>
+        </div>
+        <button id="sheet-save" type="button" class="primary">저장</button>
+        <button id="sheet-delete" type="button" class="danger-btn">삭제</button>
+      </div>
+    </div>
 
     <nav class="tab-bar">
       <button type="button" data-tab="today" class="selected">
