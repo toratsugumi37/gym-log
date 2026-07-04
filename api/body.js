@@ -1,8 +1,10 @@
 import { q } from './_lib/db.js';
 import { requireUser } from './_lib/session.js';
 import { validateBodyEntry } from './_lib/validate.js';
+import { requireJson } from './_lib/http.js';
 
 export default async function handler(req, res) {
+  if (!requireJson(req, res)) return;
   const userId = await requireUser(req, res);
   if (!userId) return;
   try {

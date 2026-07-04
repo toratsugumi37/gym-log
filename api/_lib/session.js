@@ -38,6 +38,7 @@ export async function requireUser(req, res) {
 
 export async function destroySession(req, res) {
   const token = readToken(req);
-  if (token) await q('DELETE FROM sessions WHERE token = ?', [token]);
+  // 쿠키 만료는 DB 삭제 성공 여부와 무관하게 항상 내려보낸다.
   res.setHeader('Set-Cookie', 'sid=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
+  if (token) await q('DELETE FROM sessions WHERE token = ?', [token]);
 }

@@ -78,6 +78,7 @@ button.primary {
   margin-bottom: 18px;
 }
 button.primary:active { opacity: 0.8; }
+button.primary:disabled, input:disabled { opacity: 0.5; }
 
 .muted { color: #9ca3af; font-size: 0.88rem; margin-bottom: 10px; }
 

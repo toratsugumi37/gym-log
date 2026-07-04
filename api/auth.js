@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { q } from './_lib/db.js';
 import { createSession, destroySession, requireUser } from './_lib/session.js';
 import { validateJoin, validateProfile } from './_lib/validate.js';
+import { requireJson } from './_lib/http.js';
 
 function userPayload(row) {
   return {
@@ -17,6 +18,7 @@ function userPayload(row) {
 
 export default async function handler(req, res) {
   const action = req.query.action;
+  if (!requireJson(req, res)) return;
   try {
     if (req.method === 'GET' && action === 'me') return await me(req, res);
     if (req.method === 'POST' && action === 'join') return await join(req, res);

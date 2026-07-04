@@ -48,6 +48,12 @@ createServer(async (req, res) => {
   }
 
   const filePath = pathname === '/' ? '/index.html' : pathname;
+  // 점(.)으로 시작하는 세그먼트(.env, .git 등)와 상위 경로 탈출을 차단한다.
+  if (filePath.split('/').some((s) => s === '..' || s.startsWith('.'))) {
+    res.writeHead(404);
+    res.end('not found');
+    return;
+  }
   try {
     const body = await readFile(join(root, filePath));
     res.writeHead(200, { 'Content-Type': mime[extname(filePath)] || 'application/octet-stream' });
@@ -56,4 +62,4 @@ createServer(async (req, res) => {
     res.writeHead(404);
     res.end('not found');
   }
-}).listen(8730, () => console.log('dev server: http://localhost:8730'));
+}).listen(8730, '127.0.0.1', () => console.log('dev server: http://localhost:8730'));

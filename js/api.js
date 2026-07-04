@@ -11,9 +11,15 @@ async function request(path, options) {
   const data = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
   if (res.status === 401 && data.error === 'unauthorized') {
     onUnauthorized();
-    throw new Error('unauthorized');
+    const err = new Error('unauthorized');
+    err.status = 401;
+    throw err;
   }
-  if (!data.ok) throw new Error(data.error || 'API 오류');
+  if (!data.ok) {
+    const err = new Error(data.error || 'API 오류');
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

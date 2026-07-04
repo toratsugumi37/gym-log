@@ -65,13 +65,14 @@
     <main>
       <section id="tab-today" class="tab-panel">
         <div id="exercise-buttons" class="chips"></div>
-        <input id="exercise-input" type="text" placeholder="종목 (예: 벤치프레스)">
+        <input id="exercise-input" type="text" maxlength="50" placeholder="종목 (예: 벤치프레스)">
         <p id="last-session" class="muted"></p>
         <div class="row">
-          <input id="weight-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="무게(kg)">
-          <input id="reps-input" type="number" inputmode="numeric" min="1" placeholder="횟수">
+          <input id="weight-input" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
+          <input id="reps-input" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
         </div>
         <button id="add-btn" type="button" class="primary">세트 추가</button>
+        <p id="today-notice" class="error"></p>
         <div id="today-list"></div>
       </section>
 
