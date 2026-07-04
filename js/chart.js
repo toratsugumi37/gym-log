@@ -1,4 +1,4 @@
-// 외부 라이브러리 없는 SVG 꺾은선 차트.
+// 외부 라이브러리 없는 SVG 꺾은선 차트 (Apple Health 스타일 — 영역 그라디언트 + 목표 점선).
 
 export function scalePoints(series, width, height, pad = 30, extra = []) {
   if (!series.length) return [];
@@ -19,33 +19,51 @@ export function scalePoints(series, width, height, pad = 30, extra = []) {
   return pts;
 }
 
+let chartSeq = 0; // 페이지 내 그라디언트 id 충돌 방지
+
 export function renderChart(el, series, opts = {}) {
   const W = 340;
   const H = 220;
+  const pad = 30;
   if (!series.length) {
-    el.innerHTML = '<p class="muted">아직 기록이 없어요</p>';
+    el.innerHTML = '<p class="chart-empty">기록이 쌓이면 여기에 변화가 보여요</p>';
     return;
   }
   const goal = opts.goal === null || opts.goal === undefined ? null : Number(opts.goal);
-  const pts = scalePoints(series, W, H, 30, goal === null ? [] : [goal]);
-  const line = pts.map((p) => `${p.x},${p.y}`).join(' ');
-  const dots = pts.map((p) =>
-    `<circle cx="${p.x}" cy="${p.y}" r="4"></circle>` +
-    `<text x="${p.x}" y="${p.y - 10}" text-anchor="middle">${p.weight}</text>`,
-  ).join('');
-  const first = series[0].date.slice(5);
-  const last = series[series.length - 1].date.slice(5);
-  let goalLine = '';
+  const pts = scalePoints(series, W, H, pad, goal === null ? [] : [goal]);
+  const baseline = H - pad;
+  const linePts = pts.map((p) => `${p.x},${p.y}`).join(' ');
+  const areaPts = `${pts[0].x},${baseline} ${linePts} ${pts[pts.length - 1].x},${baseline}`;
+  const gid = `wg${(chartSeq += 1)}`;
+  const dots = pts.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="2.5"></circle>`).join('');
+
+  // 마지막 값은 알약으로 강조 (Health 앱처럼)
+  const last = pts[pts.length - 1];
+  const px = Math.max(pad + 22, Math.min(last.x, W - pad - 22));
+  const py = Math.max(16, last.y - 18);
+  const pill =
+    `<g class="pill"><rect x="${px - 22}" y="${py - 13}" width="44" height="20" rx="10"></rect>` +
+    `<text class="pill-t" x="${px}" y="${py + 1}" text-anchor="middle">${last.weight}</text></g>`;
+
+  let goalEls = '';
   if (goal !== null) {
     const gy = pts.scaleY(goal);
-    goalLine =
-      `<line x1="30" y1="${gy}" x2="${W - 30}" y2="${gy}" class="goal" stroke-dasharray="5,4"></line>` +
-      `<text x="${W - 28}" y="${gy - 4}" text-anchor="end">목표 ${goal}</text>`;
+    goalEls =
+      `<line class="goal" x1="${pad}" y1="${gy}" x2="${W - pad}" y2="${gy}" stroke-dasharray="2,4"></line>` +
+      `<text class="goal-t" x="${W - pad}" y="${gy - 5}" text-anchor="end">목표 ${goal}</text>`;
   }
+
+  const first = series[0].date.slice(5).replace('-', '.');
+  const lastD = series[series.length - 1].date.slice(5).replace('-', '.');
   el.innerHTML =
     `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="변화 차트">` +
-    `${goalLine}<polyline points="${line}" fill="none"></polyline>${dots}` +
-    `<text x="30" y="${H - 8}">${first}</text>` +
-    `<text x="${W - 30}" y="${H - 8}" text-anchor="end">${last}</text>` +
+    `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop class="g0" offset="0"></stop><stop class="g1" offset="1"></stop></linearGradient></defs>` +
+    `<polygon class="area" points="${areaPts}" fill="url(#${gid})"></polygon>` +
+    goalEls +
+    `<polyline class="line" points="${linePts}" fill="none"></polyline>` +
+    dots + pill +
+    `<text class="axis" x="${pad}" y="${H - 8}">${first}</text>` +
+    `<text class="axis" x="${W - pad}" y="${H - 8}" text-anchor="end">${lastD}</text>` +
     '</svg>';
 }

@@ -3,8 +3,8 @@
   "short_name": "운동기록",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#111827",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" }

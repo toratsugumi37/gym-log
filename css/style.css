@@ -1,123 +1,406 @@
+/* ===== iOS 디자인 토큰 (라이트 기본 + 다크 자동) ===== */
+:root {
+  color-scheme: light dark;
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --label: #1c1c1e;
+  --label-2: #8e8e93;
+  --sep: rgba(60, 60, 67, 0.29);
+  --fill: rgba(118, 118, 128, 0.12);
+  --accent: #34c759;
+  --accent-press: #2fb350;
+  --blue: #007aff;
+  --red: #ff3b30;
+  --amber: #ff9500;
+  --gray: #8e8e93;
+  --nav: rgba(249, 249, 251, 0.72);
+  --chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="%238e8e93" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --card: #1c1c1e;
+    --label: #ffffff;
+    --label-2: #98989f;
+    --sep: rgba(84, 84, 88, 0.65);
+    --fill: rgba(118, 118, 128, 0.24);
+    --accent: #30d158;
+    --accent-press: #28b84c;
+    --blue: #0a84ff;
+    --red: #ff453a;
+    --amber: #ff9f0a;
+    --nav: rgba(28, 28, 30, 0.7);
+  }
+}
+
 * { box-sizing: border-box; margin: 0; }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #111827;
-  color: #f9fafb;
-  max-width: 480px;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--label);
+  max-width: 500px;
   margin: 0 auto;
-  padding: 12px 16px 48px;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-header { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px; }
-h1 { font-size: 1.3rem; flex: 1; }
-
-button.ghost {
-  border: 1px solid #374151;
-  border-radius: 8px;
-  background: transparent;
-  color: #9ca3af;
-  font-size: 0.8rem;
-  padding: 5px 10px;
-}
-
-.badge {
-  background: #f59e0b;
-  color: #111827;
-  font-size: 0.72rem;
+/* ===== 타이포 & 구조 ===== */
+.large-title {
+  font-size: 34px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
+  letter-spacing: -0.5px;
+  padding: 6px 0 14px;
 }
 
-.tab-bar { display: flex; gap: 6px; margin-bottom: 16px; }
-.tab-bar button {
-  flex: 1;
-  padding: 10px 0;
-  border: 1px solid #374151;
-  border-radius: 10px;
-  background: transparent;
-  color: #9ca3af;
-  font-size: 0.95rem;
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label-2);
+  padding: 4px 4px 7px;
 }
-.tab-bar button.selected { background: #1f2937; color: #f9fafb; border-color: #34d399; }
+.section-hint { font-weight: 400; color: var(--label-2); opacity: 0.8; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.chip {
-  padding: 8px 14px;
-  border: 1px solid #374151;
-  border-radius: 999px;
-  background: #1f2937;
-  color: #f9fafb;
-  font-size: 0.9rem;
-}
-.chip.selected { border-color: #34d399; color: #34d399; }
-
-input, select {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  border: 1px solid #374151;
-  border-radius: 10px;
-  background: #1f2937;
-  color: #f9fafb;
-  font-size: 1rem;
+.hint {
+  font-size: 13px;
+  color: var(--label-2);
+  padding: 4px 2px 2px;
+  min-height: 1.1em;
 }
 
-.row { display: flex; gap: 8px; }
+.muted {
+  color: var(--label-2);
+  font-size: 15px;
+  text-align: center;
+  padding: 28px 8px;
+}
 
-button.primary {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  background: #34d399;
-  color: #111827;
-  font-size: 1.05rem;
-  font-weight: 700;
+.error {
+  color: var(--red);
+  font-size: 13px;
+  min-height: 1.1em;
+  padding: 6px 2px 0;
+}
+
+/* ===== 카드 ===== */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
   margin-bottom: 18px;
 }
-button.primary:active { opacity: 0.8; }
-button.primary:disabled, input:disabled { opacity: 0.5; }
 
-.muted { color: #9ca3af; font-size: 0.88rem; margin-bottom: 10px; }
+/* ===== 입력 ===== */
+input, select {
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: 11px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: 17px;
+  margin-bottom: 10px;
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+}
+input::placeholder { color: var(--label-2); }
+input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+select {
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  padding-right: 34px;
+}
+.row { display: flex; gap: 10px; }
+.row > input { margin-bottom: 10px; }
 
-.group { margin-bottom: 14px; }
-.group h3 { font-size: 1rem; margin-bottom: 6px; color: #34d399; }
+/* ===== 버튼 ===== */
+button.primary {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 4px;
+  transition: transform 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+}
+button.primary:active { background: var(--accent-press); transform: scale(0.98); }
+button.primary:disabled, input:disabled, select:disabled { opacity: 0.45; }
+
+.linkbtn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 15px;
+  padding: 12px 8px 4px;
+  font-family: inherit;
+}
+
+.danger-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--red);
+  font-size: 17px;
+  font-weight: 500;
+  margin-top: 2px;
+  transition: transform 0.12s ease;
+}
+.danger-btn:active { transform: scale(0.98); }
+
+/* ===== 종목 칩 (가로 스크롤) ===== */
+.chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  margin: -4px -4px 10px;
+  padding: 4px;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: 15px;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.chip:active { transform: scale(0.95); }
+.chip.selected { background: var(--accent); color: #fff; }
+
+/* ===== 오늘 기록 리스트 ===== */
+#today-list, #history-list { margin-top: 2px; }
+
+.group {
+  background: var(--card);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.group h3 { font-size: 17px; font-weight: 600; color: var(--label); padding: 13px 16px; }
 .set-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  background: #1f2937;
-  border-radius: 8px;
-  margin-bottom: 4px;
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--sep);
 }
-.set-row span:nth-child(2) { flex: 1; }
-.set-row .del {
+.set-row span:first-child { color: var(--label-2); font-size: 15px; min-width: 42px; }
+.set-row span:nth-child(2) { flex: 1; font-size: 17px; color: var(--label); }
+.set-row .del { border: none; background: none; color: var(--red); font-size: 15px; padding: 4px 2px; font-family: inherit; }
+
+/* ===== 기록 탭 (날짜별 접기) ===== */
+#history-list details {
+  background: var(--card);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+#history-list summary {
+  padding: 14px 16px;
+  font-size: 17px;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+#history-list summary::-webkit-details-marker { display: none; }
+#history-list summary::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--label-2);
+  border-bottom: 2px solid var(--label-2);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+#history-list details[open] summary::after { transform: rotate(45deg); }
+#history-list details p { padding: 6px 16px 14px; font-size: 15px; color: var(--label-2); }
+#history-list .badge { margin: 0 0 10px 2px; }
+
+/* ===== 차트 ===== */
+.menu-select {
+  width: auto;
+  min-width: 150px;
+  background-color: var(--card);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 34px 10px 14px;
+  margin-bottom: 14px;
+}
+.chart-card { padding: 14px; }
+#chart-box:empty, #body-chart:empty { display: none; }
+.chart { width: 100%; height: auto; display: block; }
+.chart .area { stroke: none; }
+.chart .g0 { stop-color: var(--accent); stop-opacity: 0.28; }
+.chart .g1 { stop-color: var(--accent); stop-opacity: 0; }
+.chart .line { stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart circle { fill: var(--accent); }
+.chart .axis { fill: var(--label-2); font-size: 11px; font-weight: 500; }
+.chart .goal { stroke: var(--amber); stroke-width: 1.5; }
+.chart .goal-t { fill: var(--amber); font-size: 11px; font-weight: 600; }
+.chart .pill rect { fill: var(--accent); }
+.chart .pill-t { fill: #fff; font-size: 12px; font-weight: 700; }
+.chart-empty { color: var(--label-2); font-size: 15px; padding: 26px 8px; text-align: center; }
+
+/* ===== 몸 기록 리스트 & 계정 ===== */
+#body-list:not(:empty) {
+  background: var(--card);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+#body-list p { padding: 12px 16px; border-top: 0.5px solid var(--sep); font-size: 15px; color: var(--label); }
+#body-list p:first-child { border-top: none; }
+#body-list .badge { margin: 0; display: block; border-radius: 0; }
+#body-list .muted { padding: 20px 8px; }
+
+.account-card { padding: 0; }
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+.account-label { font-size: 17px; color: var(--label); }
+.account-value { font-size: 17px; color: var(--label-2); }
+
+/* ===== 선택 입력 상자 (details) ===== */
+.optional-box { border-top: 0.5px solid var(--sep); }
+.card > .optional-box:first-child, form > .optional-box { border-top: none; }
+.optional-box summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--label-2);
+  font-size: 15px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.account-card .optional-box summary { color: var(--blue); }
+.optional-box summary::-webkit-details-marker { display: none; }
+.optional-box summary::after {
+  content: '';
+  width: 7px; height: 7px;
+  border-right: 2px solid var(--label-2);
+  border-bottom: 2px solid var(--label-2);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+.optional-box[open] summary::after { transform: rotate(45deg); }
+.optional-box[open] { padding-bottom: 14px; }
+.optional-box > :not(summary) { margin-left: 16px; margin-right: 16px; }
+/* 로그인/가입 폼 안의 details는 폼 패딩을 따르도록 */
+form .optional-box { border-top: none; }
+form .optional-box > :not(summary) { margin-left: 0; margin-right: 0; }
+form .optional-box summary { padding: 8px 2px 12px; }
+
+/* ===== 배지 ===== */
+.badge {
+  display: inline-block;
+  background: var(--amber);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.badge-gray { background: var(--gray); }
+
+/* ===== 상단 상태 알약 ===== */
+.status-pills {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  left: 0; right: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ===== 탭 패널 & 메인 ===== */
+main { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0)); }
+.tab-panel { padding: calc(env(safe-area-inset-top, 0) + 8px) 16px 0; }
+
+/* ===== 하단 탭바 (시스템 머티리얼) ===== */
+.tab-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  background: var(--nav);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--sep);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 50;
+}
+.tab-bar button {
+  flex: 1;
+  background: none;
   border: none;
-  background: transparent;
-  color: #f87171;
-  font-size: 0.85rem;
-  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 0 5px;
+  color: var(--label-2);
+  font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: transform 0.1s ease;
 }
+.tab-bar button svg { width: 27px; height: 27px; }
+.tab-bar button:active { transform: scale(0.9); }
+.tab-bar button.selected { color: var(--accent); }
 
-details { background: #1f2937; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
-summary { font-weight: 700; padding: 4px 0; }
-details p { padding: 4px 0; font-size: 0.92rem; }
+/* ===== 로그인 / 가입 ===== */
+#auth-screen { padding: 0 16px; }
+.auth-wrap {
+  max-width: 380px;
+  margin: 0 auto;
+  padding-top: calc(env(safe-area-inset-top, 0) + 8vh);
+}
+.auth-hero { text-align: center; margin-bottom: 26px; }
+.auth-glyph {
+  width: 64px; height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-glyph svg { width: 38px; height: 38px; }
+.auth-title { font-size: 30px; font-weight: 700; letter-spacing: -0.4px; }
+.auth-sub { color: var(--label-2); font-size: 16px; margin-top: 6px; }
 
-.chart { width: 100%; }
-.chart polyline { stroke: #34d399; stroke-width: 2; }
-.chart circle { fill: #34d399; }
-.chart text { fill: #9ca3af; font-size: 11px; }
-.chart line.goal { stroke: #f59e0b; stroke-width: 1.5; }
-
-#auth-screen { padding-top: 48px; }
-.auth-title { text-align: center; margin-bottom: 24px; }
-.error { color: #f87171; font-size: 0.88rem; min-height: 1.2em; margin: 4px 0; }
-.wide { width: 100%; margin-top: 8px; padding: 12px; }
-.optional-box { margin-bottom: 10px; }
-.optional-box summary { color: #9ca3af; font-size: 0.9rem; font-weight: 400; }
-.optional-box input, .optional-box select, .optional-box .row { margin-top: 10px; }
-#logout-btn { margin-top: 24px; }
-#body-list p { padding: 6px 2px; font-size: 0.92rem; border-bottom: 1px solid #1f2937; }
+/* ===== 접근성 / 모션 ===== */
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .primary:active, .chip:active, .tab-bar button:active, .danger-btn:active { transform: none; }
+}

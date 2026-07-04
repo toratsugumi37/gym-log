@@ -2,123 +2,171 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="운동 기록">
   <title>운동 기록</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
 </head>
 <body>
+  <!-- 로그인 / 회원가입 -->
   <section id="auth-screen" hidden>
-    <h1 class="auth-title">운동 기록</h1>
-
-    <form id="login-form">
-      <input id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="none">
-      <input id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
-      <p id="login-error" class="error"></p>
-      <button type="submit" class="primary">로그인</button>
-      <button type="button" id="show-join" class="ghost wide">처음이에요 — 회원가입</button>
-    </form>
-
-    <form id="join-form" hidden>
-      <input id="join-username" type="text" placeholder="아이디 (영문/숫자 4~30자)" autocomplete="username" autocapitalize="none">
-      <input id="join-password" type="password" placeholder="비밀번호 (8자 이상)" autocomplete="new-password">
-      <input id="join-nickname" type="text" placeholder="닉네임">
-      <details class="optional-box">
-        <summary>몸 정보 입력 (선택 — 나중에 몸 탭에서 가능)</summary>
-        <div class="row">
-          <input id="join-birth" type="number" inputmode="numeric" placeholder="생년도 (예: 1995)">
-          <select id="join-gender">
-            <option value="">성별</option>
-            <option value="m">남</option>
-            <option value="f">여</option>
-          </select>
+    <div class="auth-wrap">
+      <div class="auth-hero">
+        <div class="auth-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 9v6M7 6.5v11M17 6.5v11M20 9v6M7 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
-        <div class="row">
-          <input id="join-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
-          <input id="join-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
-        </div>
-        <input id="join-goal-text" type="text" placeholder="목표 한 줄 (예: 벤치 100 치기)">
-      </details>
-      <p id="join-error" class="error"></p>
-      <button type="submit" class="primary">가입하기</button>
-      <button type="button" id="show-login" class="ghost wide">이미 계정 있어요 — 로그인</button>
-    </form>
-  </section>
+        <h1 class="auth-title">운동 기록</h1>
+        <p class="auth-sub">오늘의 세트를 남겨두세요</p>
+      </div>
 
-  <div id="app" hidden>
-    <header>
-      <h1>운동 기록</h1>
-      <span id="nickname" class="muted"></span>
-      <span id="pending-badge" class="badge" hidden>전송 대기</span>
-      <span id="offline-badge" class="badge" hidden>오프라인</span>
-    </header>
+      <form id="login-form" class="card">
+        <input id="login-username" type="text" placeholder="아이디" autocomplete="username" autocapitalize="none">
+        <input id="login-password" type="password" placeholder="비밀번호" autocomplete="current-password">
+        <button type="submit" class="primary">로그인</button>
+        <p id="login-error" class="error"></p>
+        <button type="button" id="show-join" class="linkbtn">계정이 없으신가요? 회원가입</button>
+      </form>
 
-    <nav class="tab-bar">
-      <button type="button" data-tab="today" class="selected">오늘</button>
-      <button type="button" data-tab="history">기록</button>
-      <button type="button" data-tab="chart">차트</button>
-      <button type="button" data-tab="body">몸</button>
-    </nav>
-
-    <main>
-      <section id="tab-today" class="tab-panel">
-        <div id="exercise-buttons" class="chips"></div>
-        <input id="exercise-input" type="text" maxlength="50" placeholder="종목 (예: 벤치프레스)">
-        <p id="last-session" class="muted"></p>
-        <div class="row">
-          <input id="weight-input" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
-          <input id="reps-input" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
-        </div>
-        <button id="add-btn" type="button" class="primary">세트 추가</button>
-        <p id="today-notice" class="error"></p>
-        <div id="today-list"></div>
-      </section>
-
-      <section id="tab-history" class="tab-panel" hidden>
-        <div id="history-list"></div>
-      </section>
-
-      <section id="tab-chart" class="tab-panel" hidden>
-        <select id="chart-exercise"></select>
-        <div id="chart-box"></div>
-      </section>
-
-      <section id="tab-body" class="tab-panel" hidden>
-        <p class="muted">오늘 몸 상태 (아는 것만 입력)</p>
-        <div class="row">
-          <input id="body-weight" type="number" inputmode="decimal" step="0.1" placeholder="몸무게(kg)">
-          <input id="body-fat" type="number" inputmode="decimal" step="0.1" placeholder="체지방(%)">
-          <input id="body-muscle" type="number" inputmode="decimal" step="0.1" placeholder="골격근(kg)">
-        </div>
-        <button id="body-save-btn" type="button" class="primary">몸 상태 저장</button>
-        <p id="goal-line" class="muted"></p>
-        <div id="body-chart"></div>
-        <div id="body-list"></div>
-
+      <form id="join-form" class="card" hidden>
+        <input id="join-username" type="text" placeholder="아이디 (영문/숫자 4~30자)" autocomplete="username" autocapitalize="none">
+        <input id="join-password" type="password" placeholder="비밀번호 (8자 이상)" autocomplete="new-password">
+        <input id="join-nickname" type="text" placeholder="닉네임">
         <details class="optional-box">
-          <summary>프로필 / 목표 수정</summary>
-          <input id="profile-nickname" type="text" placeholder="닉네임">
+          <summary>몸 정보 입력 (선택 — 나중에 몸 탭에서 가능)</summary>
           <div class="row">
-            <input id="profile-birth" type="number" inputmode="numeric" placeholder="생년도">
-            <select id="profile-gender">
+            <input id="join-birth" type="number" inputmode="numeric" placeholder="생년도 (예: 1995)">
+            <select id="join-gender">
               <option value="">성별</option>
               <option value="m">남</option>
               <option value="f">여</option>
             </select>
           </div>
           <div class="row">
-            <input id="profile-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
-            <input id="profile-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
+            <input id="join-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
+            <input id="join-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
           </div>
-          <input id="profile-goal-text" type="text" placeholder="목표 한 줄">
-          <p id="profile-error" class="error"></p>
-          <button id="profile-save-btn" type="button" class="primary">프로필 저장</button>
+          <input id="join-goal-text" type="text" placeholder="목표 한 줄 (예: 벤치 100 치기)">
         </details>
-        <button id="logout-btn" type="button" class="ghost wide">로그아웃</button>
+        <button type="submit" class="primary">가입하기</button>
+        <p id="join-error" class="error"></p>
+        <button type="button" id="show-login" class="linkbtn">이미 계정이 있으신가요? 로그인</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 앱 -->
+  <div id="app" hidden>
+    <div class="status-pills">
+      <span id="pending-badge" class="badge" hidden>전송 대기</span>
+      <span id="offline-badge" class="badge badge-gray" hidden>오프라인</span>
+    </div>
+
+    <main>
+      <!-- 오늘 -->
+      <section id="tab-today" class="tab-panel">
+        <h1 class="large-title">오늘</h1>
+
+        <p class="section-label">새 세트</p>
+        <div class="card">
+          <div id="exercise-buttons" class="chips"></div>
+          <input id="exercise-input" type="text" maxlength="50" placeholder="종목 (예: 벤치프레스)">
+          <p id="last-session" class="hint"></p>
+          <div class="row">
+            <input id="weight-input" type="number" inputmode="decimal" min="0" max="2000" step="0.5" placeholder="무게(kg)">
+            <input id="reps-input" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="횟수">
+          </div>
+          <button id="add-btn" type="button" class="primary">세트 추가</button>
+          <p id="today-notice" class="error"></p>
+        </div>
+
+        <div id="today-list"></div>
+      </section>
+
+      <!-- 기록 -->
+      <section id="tab-history" class="tab-panel" hidden>
+        <h1 class="large-title">기록</h1>
+        <div id="history-list"></div>
+      </section>
+
+      <!-- 차트 -->
+      <section id="tab-chart" class="tab-panel" hidden>
+        <h1 class="large-title">차트</h1>
+        <select id="chart-exercise" class="menu-select"></select>
+        <div id="chart-box" class="card chart-card"></div>
+      </section>
+
+      <!-- 몸 -->
+      <section id="tab-body" class="tab-panel" hidden>
+        <h1 class="large-title">몸</h1>
+
+        <p class="section-label">오늘 몸 상태 <span class="section-hint">아는 것만 · 몸무게·골격근 kg, 체지방 %</span></p>
+        <div class="card">
+          <div class="row">
+            <input id="body-weight" type="number" inputmode="decimal" step="0.1" placeholder="몸무게">
+            <input id="body-fat" type="number" inputmode="decimal" step="0.1" placeholder="체지방">
+            <input id="body-muscle" type="number" inputmode="decimal" step="0.1" placeholder="골격근">
+          </div>
+          <button id="body-save-btn" type="button" class="primary">몸 상태 저장</button>
+          <p id="goal-line" class="hint"></p>
+        </div>
+
+        <div id="body-chart" class="card chart-card"></div>
+        <div id="body-list"></div>
+
+        <p class="section-label">계정</p>
+        <div class="card account-card">
+          <div class="account-row">
+            <span class="account-label">닉네임</span>
+            <span id="nickname" class="account-value"></span>
+          </div>
+          <details class="optional-box">
+            <summary>프로필 / 목표 수정</summary>
+            <input id="profile-nickname" type="text" placeholder="닉네임">
+            <div class="row">
+              <input id="profile-birth" type="number" inputmode="numeric" placeholder="생년도">
+              <select id="profile-gender">
+                <option value="">성별</option>
+                <option value="m">남</option>
+                <option value="f">여</option>
+              </select>
+            </div>
+            <div class="row">
+              <input id="profile-height" type="number" inputmode="decimal" step="0.1" placeholder="키(cm)">
+              <input id="profile-goal-weight" type="number" inputmode="decimal" step="0.1" placeholder="목표 몸무게(kg)">
+            </div>
+            <input id="profile-goal-text" type="text" placeholder="목표 한 줄">
+            <button id="profile-save-btn" type="button" class="primary">프로필 저장</button>
+            <p id="profile-error" class="error"></p>
+          </details>
+        </div>
+        <button id="logout-btn" type="button" class="danger-btn">로그아웃</button>
       </section>
     </main>
+
+    <nav class="tab-bar">
+      <button type="button" data-tab="today" class="selected">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6M7 6.5v11M17 6.5v11M20 9v6M7 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>오늘</span>
+      </button>
+      <button type="button" data-tab="history">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7h11M9 12h11M9 17h11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.6" cy="7" r="1.3" fill="currentColor"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor"/><circle cx="4.6" cy="17" r="1.3" fill="currentColor"/></svg>
+        <span>기록</span>
+      </button>
+      <button type="button" data-tab="chart">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 15l3-3 3 2 5-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>차트</span>
+      </button>
+      <button type="button" data-tab="body">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4" fill="currentColor"/><path d="M5.5 19.5c0-3.6 2.9-6.3 6.5-6.3s6.5 2.7 6.5 6.3" fill="currentColor"/></svg>
+        <span>몸</span>
+      </button>
+    </nav>
   </div>
 
   <script type="module" src="js/ui.js"></script>
