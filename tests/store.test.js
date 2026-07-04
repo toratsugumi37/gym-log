@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   groupByExercise, groupByDate, nextSetNumber, summarizeSession, todayStr, newId,
+  summarizeToday, filterExercises, hasExercise,
 } from '../js/store.js';
 
 const records = [
@@ -40,4 +41,29 @@ test('groupByDate: 최근 날짜부터', () => {
     { date: '2026-07-01', exercise: '스쿼트', weight: 75, reps: 5, set: 1, id: 'z1' },
   ]);
   assert.deepEqual(groupByDate(more).map((d) => d.date), ['2026-07-04', '2026-07-01']);
+});
+
+test('summarizeToday: 종목수·세트수·볼륨 합계', () => {
+  const recs = [
+    { exercise: '벤치프레스', weight: 60, reps: 10 },
+    { exercise: '벤치프레스', weight: 62.5, reps: 8 },
+    { exercise: '스쿼트', weight: 80, reps: 5 },
+  ];
+  assert.deepEqual(summarizeToday(recs), { exercises: 2, sets: 3, volume: 60 * 10 + 62.5 * 8 + 80 * 5 });
+  assert.deepEqual(summarizeToday([]), { exercises: 0, sets: 0, volume: 0 });
+});
+
+test('filterExercises: 부분일치, 공백·대소문자 무시', () => {
+  const list = ['벤치프레스', '인클라인 벤치', '스쿼트'];
+  assert.deepEqual(filterExercises(list, '벤치'), ['벤치프레스', '인클라인 벤치']);
+  assert.deepEqual(filterExercises(list, '인클라인벤치'), ['인클라인 벤치']);
+  assert.deepEqual(filterExercises(list, ''), list);
+  assert.deepEqual(filterExercises(list, '데드'), []);
+});
+
+test('hasExercise: 공백·대소문자 무시 정확일치', () => {
+  const list = ['벤치프레스', 'Lat Pulldown'];
+  assert.equal(hasExercise(list, '벤치프레스'), true);
+  assert.equal(hasExercise(list, 'lat  pulldown'), true);
+  assert.equal(hasExercise(list, '벤치'), false);
 });

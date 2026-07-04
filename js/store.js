@@ -45,3 +45,23 @@ export function todayStr(now = new Date()) {
 export function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+export function summarizeToday(records) {
+  const exercises = new Set(records.map((r) => r.exercise)).size;
+  const sets = records.length;
+  const volume = records.reduce((s, r) => s + r.weight * r.reps, 0);
+  return { exercises, sets, volume };
+}
+
+const normEx = (s) => String(s).toLowerCase().replace(/\s+/g, '');
+
+export function filterExercises(list, query) {
+  const q = normEx(query);
+  if (!q) return list.slice();
+  return list.filter((name) => normEx(name).includes(q));
+}
+
+export function hasExercise(list, name) {
+  const target = normEx(name);
+  return list.some((e) => normEx(e) === target);
+}
