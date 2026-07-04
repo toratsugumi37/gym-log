@@ -228,6 +228,10 @@ async function init() {
     offline = true;
     todayRecords = queue.all().filter((r) => r.date === todayStr());
   }
+  // 서버 종목 목록에 없는 오늘 기록 종목도 버튼으로 노출 (오프라인 대비)
+  for (const r of todayRecords) {
+    if (!exercises.includes(r.exercise)) exercises.unshift(r.exercise);
+  }
   renderExerciseButtons();
   renderToday();
   flushQueue();
