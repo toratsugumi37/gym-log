@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>운동 기록</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+</head>
+<body>
+  <header>
+    <h1>운동 기록</h1>
+    <span id="pending-badge" class="badge" hidden>전송 대기</span>
+    <span id="offline-badge" class="badge" hidden>오프라인</span>
+  </header>
+
+  <nav class="tab-bar">
+    <button type="button" data-tab="today" class="selected">오늘</button>
+    <button type="button" data-tab="history">지난 기록</button>
+    <button type="button" data-tab="chart">차트</button>
+  </nav>
+
+  <main>
+    <section id="tab-today" class="tab-panel">
+      <div id="exercise-buttons" class="chips"></div>
+      <input id="exercise-input" type="text" placeholder="종목 (예: 벤치프레스)">
+      <p id="last-session" class="muted"></p>
+      <div class="row">
+        <input id="weight-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="무게(kg)">
+        <input id="reps-input" type="number" inputmode="numeric" min="1" placeholder="횟수">
+      </div>
+      <button id="add-btn" type="button" class="primary">세트 추가</button>
+      <div id="today-list"></div>
+    </section>
+
+    <section id="tab-history" class="tab-panel" hidden>
+      <div id="history-list"></div>
+    </section>
+
+    <section id="tab-chart" class="tab-panel" hidden>
+      <select id="chart-exercise"></select>
+      <div id="chart-box"></div>
+    </section>
+  </main>
+
+  <script type="module" src="js/ui.js"></script>
+</body>
+</html>

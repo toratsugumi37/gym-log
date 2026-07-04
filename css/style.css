@@ -1,0 +1,102 @@
+* { box-sizing: border-box; margin: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px 48px;
+}
+
+header { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px; }
+h1 { font-size: 1.3rem; }
+
+.badge {
+  background: #f59e0b;
+  color: #111827;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.tab-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+.tab-bar button {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.95rem;
+}
+.tab-bar button.selected { background: #1f2937; color: #f9fafb; border-color: #34d399; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.chip {
+  padding: 8px 14px;
+  border: 1px solid #374151;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 0.9rem;
+}
+.chip.selected { border-color: #34d399; color: #34d399; }
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 1rem;
+}
+
+.row { display: flex; gap: 8px; }
+
+button.primary {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #34d399;
+  color: #111827;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+button.primary:active { opacity: 0.8; }
+
+.muted { color: #9ca3af; font-size: 0.88rem; margin-bottom: 10px; }
+
+.group { margin-bottom: 14px; }
+.group h3 { font-size: 1rem; margin-bottom: 6px; color: #34d399; }
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #1f2937;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.set-row span:nth-child(2) { flex: 1; }
+.set-row .del {
+  border: none;
+  background: transparent;
+  color: #f87171;
+  font-size: 0.85rem;
+  padding: 4px;
+}
+
+details { background: #1f2937; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+summary { font-weight: 700; padding: 4px 0; }
+details p { padding: 4px 0; font-size: 0.92rem; }
+
+.chart { width: 100%; }
+.chart polyline { stroke: #34d399; stroke-width: 2; }
+.chart circle { fill: #34d399; }
+.chart text { fill: #9ca3af; font-size: 11px; }
