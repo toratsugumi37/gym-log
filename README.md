@@ -1,53 +1,32 @@
 # 운동 기록 (gym-log)
 
-휴대폰으로 종목·무게·횟수·세트를 입력하면 구글 시트에 쌓이는 개인 운동 기록 사이트.
-GitHub Pages + Google Apps Script — 전부 무료.
+휴대폰으로 종목·무게·횟수·세트를 입력하고, 몸무게/체지방 변화도 기록하는 개인 운동 기록 사이트.
+Vercel(프론트+API) + TiDB Serverless(MySQL 호환) — 전부 무료.
 
-## 세팅 (최초 1회)
+## 사용
 
-### 1. 구글 시트 + Apps Script
+1. 사이트 접속 → 회원가입(아이디/비밀번호/닉네임, 몸 정보는 선택)
+2. 한 번 로그인하면 90일 유지
+3. 휴대폰 브라우저 메뉴 → **홈 화면에 추가** → 앱처럼 사용
 
-1. [sheets.new](https://sheets.new) 에서 새 시트 생성 (이름 예: `운동 기록`)
-2. 메뉴 **확장 프로그램 > Apps Script** 클릭
-3. 기본 `Code.gs` 내용을 지우고, 이 저장소의 `apps-script/Code.gs` 내용을 붙여넣기
-4. **파일 추가(+) > 스크립트**로 `logic` 파일을 만들고 `apps-script/logic.cjs` 내용을 붙여넣기
-5. 왼쪽 **프로젝트 설정(톱니바퀴) > 스크립트 속성 > 속성 추가**:
-   - 속성: `TOKEN` / 값: 아무 비밀 문자열 (예: 랜덤 20자) — 이게 비밀번호 역할
-6. 오른쪽 위 **배포 > 새 배포 > 유형: 웹 앱**
-   - 실행 계정: **나**
-   - 액세스 권한: **모든 사용자**
-7. **[배포]를 누르면 권한 승인 창이 뜬다** (최초 1회 필수):
-   - **액세스 승인** 클릭 → 본인 구글 계정 선택
-   - "Google에서 확인하지 않은 앱" 경고가 나오면 → **고급** 클릭 → **(프로젝트명)(안전하지 않음)으로 이동** → **허용**
-   - 본인이 직접 붙여넣은 스크립트라서 안전하다
-8. 배포 완료 후 나오는 **웹 앱 URL**(`https://script.google.com/macros/s/…/exec`)을 복사해서 토큰과 함께 메모해 둔다
+## 구조
 
-> 코드를 수정하면 **배포 > 배포 관리 > 연필 아이콘 > 버전: 새 버전**으로 다시 배포해야 반영된다.
-
-### 2. 사이트 접속
-
-1. `https://<username>.github.io/gym-log/` 접속
-2. 최초 접속 시 웹 앱 URL과 토큰을 물어봄 → 위에서 만든 값 입력 (브라우저에 저장됨)
-3. 휴대폰 브라우저 메뉴에서 **홈 화면에 추가** → 앱처럼 사용
-   - **iPhone 주의**: 홈 화면 앱은 Safari와 저장소를 공유하지 않아서, 추가한 뒤 앱을 처음 열 때 URL과 토큰을 한 번 더 입력해야 한다. 두 값을 메모해 둘 것.
-   - 잘못 입력했다면 화면 오른쪽 위 **설정** 버튼으로 다시 입력할 수 있다.
-
-## 동작 확인 (curl)
-
-```bash
-# 조회 (빈 기록이면 records: [])
-curl -L "<웹앱URL>?token=<토큰>&action=today&date=2026-07-04"
-
-# 세트 추가 (-X POST를 쓰면 안 됨 — 리다이렉트에서 실패한다. -d만으로 POST가 된다)
-curl -L "<웹앱URL>" -H "Content-Type: text/plain" \
-  -d '{"token":"<토큰>","action":"add","record":{"id":"test-1","date":"2026-07-04","exercise":"벤치프레스","weight":60,"reps":10,"set":1}}'
-```
+- 프론트: 바닐라 JS 정적 파일 (`index.html`, `js/`, `css/`)
+- API: `api/*.js` — Vercel Node 서버리스 함수 (auth / sets / body)
+- DB: TiDB Cloud Serverless(MySQL 호환), 스키마는 `schema.sql`
+- 인증: bcrypt + 세션 토큰(httpOnly 쿠키 90일). 계정별 데이터 분리.
+- 오프라인: 전송 실패한 세트/삭제는 대기열에 쌓였다가 자동 재전송(멱등).
 
 ## 개발
 
 ```bash
-npm test          # 단위 테스트 (Node 18+)
-npx serve .       # 로컬 서버 (ES 모듈이라 file:// 로는 안 열림)
+npm install
+npm test                                   # 단위 테스트 (Node 20+)
+cp .env.example .env                       # DATABASE_URL 채우기
+node --env-file=.env scripts/init-db.mjs   # 스키마 적용 (DB 없으면 생성)
+npm run dev                                # http://localhost:8730
 ```
 
-토큰과 웹 앱 URL은 코드에 넣지 않는다 — 브라우저 localStorage(`gymlog.config`)에만 저장.
+배포: `npx vercel deploy --prod` (Vercel 프로젝트에 환경변수 `DATABASE_URL` 필요)
+
+`.env`는 절대 커밋하지 않는다.

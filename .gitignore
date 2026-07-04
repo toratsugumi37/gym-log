@@ -3,5 +3,6 @@
 node_modules/
 .DS_Store
 .playwright-mcp/
-.env
 .vercel/
+.env*
+!.env.example
